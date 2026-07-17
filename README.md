@@ -1,6 +1,6 @@
 # MongoPilot
 
-<img width="1919" height="951" alt="image" src="https://github.com/user-attachments/assets/8beff637-d7bc-4af4-8c76-2e9a5c27c315" />
+<img width="1919" height="951" alt="image" src="https://i.postimg.cc/BQsdYWDt/Screenshot-2026-07-18-020149.png" />
 
 Modern MongoDB management dashboard built with Next.js 14, TypeScript, and TailwindCSS.
 
