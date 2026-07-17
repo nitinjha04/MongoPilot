@@ -81,11 +81,12 @@ const renderHighlightedJson = (obj: any, indent = 0): React.ReactNode => {
 
   return String(obj);
 };
-import { motion } from 'framer-motion';
-import JSON5 from 'json5';
+import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from '@/lib/toast';
+import { parseMongoFilterQuery } from '@/lib/mongoFilterParse';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DocumentEditor } from './DocumentEditor';
+import { FilterQueryInput } from './FilterQueryInput';
 
 interface DocumentTableProps {
   connectionId: string;
@@ -131,30 +132,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   });
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const parseFilterQuery = (query: string): { ok: true; filter: Record<string, unknown>; normalized: string } | { ok: false; error: string } => {
-    const trimmed = query.trim() || '{}';
-
-    try {
-      // JSON5 accepts Compass/mongo-shell style filters, e.g. {email:"a@b.com"}
-      const parsed = JSON5.parse(trimmed);
-
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        return { ok: false, error: 'Filter must be an object' };
-      }
-
-      // Normalize to strict JSON for stable comparison / appliedFilter storage
-      const normalized = JSON.stringify(parsed);
-
-      return { ok: true, filter: parsed as Record<string, unknown>, normalized };
-    } catch {
-      return { ok: false, error: 'Invalid filter syntax' };
-    }
-  };
-
   const loadDocuments = useCallback(async () => {
     if (!connection) return;
 
-    const parsed = parseFilterQuery(appliedFilter);
+    const parsed = parseMongoFilterQuery(appliedFilter);
     if (!parsed.ok) return;
 
     abortControllerRef.current?.abort();
@@ -210,7 +191,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   // Debounce: apply filter only after the user pauses typing
   useEffect(() => {
     const timer = setTimeout(() => {
-      const result = parseFilterQuery(filterQuery);
+      const result = parseMongoFilterQuery(filterQuery);
       if (!result.ok) {
         // Still typing incomplete JSON — wait; keep previous applied filter
         return;
@@ -235,7 +216,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   }, [database, collection]);
 
   const handleApplyOrRefresh = () => {
-    const parsed = parseFilterQuery(filterQuery);
+    const parsed = parseMongoFilterQuery(filterQuery);
 
     if (!parsed.ok) {
       setFilterError(parsed.error);
@@ -483,23 +464,16 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           {/* Single MongoDB Query Input (like Compass) */}
           <div className="flex flex-col gap-1 flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Input
-                placeholder='Filter: {email: "user@example.com"} or {}'
+              <FilterQueryInput
+                placeholder='{_id: ObjectId("...")} or {email: "a@b.com"}'
                 value={filterQuery}
-                onChange={(e) => {
-                  setFilterQuery(e.target.value);
+                onChange={(next) => {
+                  setFilterQuery(next);
                   setFilterError(null);
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleApplyOrRefresh();
-                  }
-                }}
-                className={cn(
-                  'flex-1 text-xs sm:text-sm font-mono',
-                  filterError && 'border-destructive focus-visible:ring-destructive'
-                )}
+                onSubmit={handleApplyOrRefresh}
+                hasError={Boolean(filterError)}
+                className="text-xs sm:text-sm"
               />
               <Button
                 variant="outline"
@@ -551,20 +525,30 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto">
-        {isLoading && documents.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : documents.length === 0 ? (
+      <div className="relative flex-1 overflow-auto">
+        {documents.length === 0 && !isLoading ? (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
               <Eye className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p>No documents found</p>
             </div>
           </div>
+        ) : documents.length === 0 && isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative flex h-12 w-12 items-center justify-center">
+                <span className="absolute inset-0 rounded-full border-2 border-primary/20" />
+                <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+                <Database className="h-5 w-5 text-primary/80" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">Loading documents</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Fetching from {collection}</p>
+              </div>
+            </div>
+          </div>
         ) : viewMode === 'table' ? (
-          <table className="w-full">
+          <table className={cn('w-full transition-opacity duration-200', isLoading && 'opacity-50')}>
             <thead className="sticky top-0 z-20 bg-muted">
               <tr>
                 {allKeys.map((key) => (
@@ -622,7 +606,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             </tbody>
           </table>
         ) : (
-          <div className="p-4 space-y-2">
+          <div className={cn('p-4 space-y-2 transition-opacity duration-200', isLoading && 'opacity-50')}>
             {documents.map((doc, idx) => (
               <motion.div
                 key={String(doc._id)}
@@ -664,6 +648,27 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             ))}
           </div>
         )}
+
+        {/* Overlay loader — visible during search/refresh while documents remain on screen */}
+        <AnimatePresence>
+          {isLoading && documents.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="pointer-events-none absolute inset-0 z-30 flex items-start justify-center bg-background/40 backdrop-blur-[1px]"
+            >
+              <div className="sticky top-8 mt-8 flex items-center gap-2.5 rounded-full border border-border bg-card/95 px-4 py-2 shadow-lg">
+                <span className="relative flex h-4 w-4 items-center justify-center">
+                  <span className="absolute inset-0 rounded-full border-2 border-primary/20" />
+                  <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+                </span>
+                <span className="text-xs font-medium text-foreground">Updating results…</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Pagination */}

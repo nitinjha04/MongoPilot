@@ -1,0 +1,123 @@
+{
+  "pairs": {
+    "{": "}",
+    "[": "]",
+    "(": ")",
+    "\"": "\"",
+    "'": "'"
+  },
+  "suggestions": [
+    {
+      "id": "objectId",
+      "label": "ObjectId",
+      "detail": "Match a MongoDB ObjectId",
+      "keywords": ["objectid", "object", "oid", "_id"],
+      "insert": "ObjectId(\"\")",
+      "cursorOffset": 10
+    },
+    {
+      "id": "isoDate",
+      "label": "ISODate",
+      "detail": "Match an ISO date string",
+      "keywords": ["isodate", "date", "datetime"],
+      "insert": "ISODate(\"\")",
+      "cursorOffset": 9
+    },
+    {
+      "id": "eq",
+      "label": "$eq",
+      "detail": "Equals",
+      "keywords": ["eq", "equals", "$eq"],
+      "insert": "$eq: ",
+      "cursorOffset": 5
+    },
+    {
+      "id": "ne",
+      "label": "$ne",
+      "detail": "Not equal",
+      "keywords": ["ne", "not", "$ne"],
+      "insert": "$ne: ",
+      "cursorOffset": 5
+    },
+    {
+      "id": "in",
+      "label": "$in",
+      "detail": "Match any value in an array",
+      "keywords": ["in", "$in"],
+      "insert": "$in: []",
+      "cursorOffset": 6
+    },
+    {
+      "id": "nin",
+      "label": "$nin",
+      "detail": "Match none of the values in an array",
+      "keywords": ["nin", "$nin"],
+      "insert": "$nin: []",
+      "cursorOffset": 7
+    },
+    {
+      "id": "gt",
+      "label": "$gt",
+      "detail": "Greater than",
+      "keywords": ["gt", "greater", "$gt"],
+      "insert": "$gt: ",
+      "cursorOffset": 5
+    },
+    {
+      "id": "gte",
+      "label": "$gte",
+      "detail": "Greater than or equal",
+      "keywords": ["gte", "$gte"],
+      "insert": "$gte: ",
+      "cursorOffset": 6
+    },
+    {
+      "id": "lt",
+      "label": "$lt",
+      "detail": "Less than",
+      "keywords": ["lt", "less", "$lt"],
+      "insert": "$lt: ",
+      "cursorOffset": 5
+    },
+    {
+      "id": "lte",
+      "label": "$lte",
+      "detail": "Less than or equal",
+      "keywords": ["lte", "$lte"],
+      "insert": "$lte: ",
+      "cursorOffset": 6
+    },
+    {
+      "id": "regex",
+      "label": "$regex",
+      "detail": "Regular expression match",
+      "keywords": ["regex", "regexp", "pattern", "$regex"],
+      "insert": "$regex: \"\"",
+      "cursorOffset": 9
+    },
+    {
+      "id": "exists",
+      "label": "$exists",
+      "detail": "Field exists",
+      "keywords": ["exists", "$exists"],
+      "insert": "$exists: true",
+      "cursorOffset": 13
+    },
+    {
+      "id": "and",
+      "label": "$and",
+      "detail": "Logical AND",
+      "keywords": ["and", "$and"],
+      "insert": "$and: [{}, {}]",
+      "cursorOffset": 8
+    },
+    {
+      "id": "or",
+      "label": "$or",
+      "detail": "Logical OR",
+      "keywords": ["or", "$or"],
+      "insert": "$or: [{}, {}]",
+      "cursorOffset": 7
+    }
+  ]
+}

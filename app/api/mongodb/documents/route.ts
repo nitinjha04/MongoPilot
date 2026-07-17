@@ -6,26 +6,46 @@ import { NextRequest, NextResponse } from 'next/server';
 import { findDocuments, insertDocument, updateDocument, deleteDocument } from '@/services/mongodb';
 import { ObjectId } from 'mongodb';
 
-// Helper function to convert _id strings to ObjectId
-function convertIdFilter(filter: any): any {
-  if (!filter || typeof filter !== 'object') return filter;
+/**
+ * Convert Extended JSON / shell-normalized filters into BSON values the driver expects.
+ * e.g. { _id: { $oid: "..." } } → { _id: ObjectId("...") }
+ */
+function convertIdFilter(value: any): any {
+  if (Array.isArray(value)) {
+    return value.map(convertIdFilter);
+  }
 
-  const converted = { ...filter };
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
 
-  // Handle _id field specifically
-  if (converted._id && typeof converted._id === 'string') {
+  if (typeof value.$oid === 'string') {
     try {
-      // Try to convert string to ObjectId
-      converted._id = new ObjectId(converted._id);
-    } catch (error) {
-      // If conversion fails, leave as string (in case it's a custom _id)
+      return new ObjectId(value.$oid);
+    } catch {
+      return value.$oid;
     }
   }
 
-  // Recursively handle nested objects
-  for (const key in converted) {
-    if (typeof converted[key] === 'object' && converted[key] !== null && !(converted[key] instanceof ObjectId)) {
-      converted[key] = convertIdFilter(converted[key]);
+  if (typeof value.$date === 'string') {
+    return new Date(value.$date);
+  }
+
+  if (typeof value.$numberLong === 'string') {
+    return Number(value.$numberLong);
+  }
+
+  const converted: Record<string, unknown> = {};
+
+  for (const [key, nested] of Object.entries(value)) {
+    if (key === '_id' && typeof nested === 'string') {
+      try {
+        converted[key] = new ObjectId(nested);
+      } catch {
+        converted[key] = nested;
+      }
+    } else {
+      converted[key] = convertIdFilter(nested);
     }
   }
 
